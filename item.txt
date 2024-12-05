@@ -1,0 +1,75 @@
+2023/5/18
+模型训练：                                                                                                                                                                                                           
+1 准备数据集转至coalproject/datasets
+部署 train与val     images/train && val  labels/train && val 实验集与训练集要对应
+2 改coalproject/yolov5-6.0里面的data与models
+data/roadDamage.yaml     编辑.yaml里面的 nc 、path与names（根据自己的数据集）
+models/yolov5s_road.yaml  修改nc即可
+3 训练
+一定要在有train.py的地方打开命令行（/coalproject/yolov5-v6.0）
+激活环境 conda activate yolov5
+输入python train.py --device 0,1(0,1表示显卡数)
+
+
+容器部署：
+1 激活conda环境（煤矿）
+conda activate yolov5
+
+2 转换权重文件 .pt->.wts
+python gen_wts.py -w  ***.pt -o ***.wts
+
+3 找到tensorrx-yolov5-v6.0/yolov5下的build文件夹
+。将.wts文件cp至build里 
+sudo docker ps -a  
+sudo docker exec -it meikuang2.0 /bin/bash
+sudo docker cp ***.wts meikuang2.0:/nvidia/tensorrtx-yolov5-v6.0/yolov5/build   (要在docker外)
+cd /            cd nvidia  。。。。。   cd build    ls 查看是否cp成功
+
+。在 tensorrtx/yolov5/yololayer.h 中
+修改20行 CLASS_NUM 为 * 取决于你数据集的类别
+cd  tensorrtx/yolov5/     
+vim  yololayer.h
+i   进入插入模式
+ESC 退出
+:wq 保存退出  （:q！不保存退出      :q不保存退出）
+
+。cmake .. && make -j8
+
+。模型转换   .wts->.engine：
+./yolov5 -s ***.wts yolov5s.***.engine s 
+
+4 将生成的engine文件改名为model.plan并放到对应模型的 1 目录下
+(cd /workspace/triton_deploy/build/1
+ ls 查看1中是否存在models.plan)
+sudo cp ***.engine /nvidia/.....(开两个终端并且都要在docker里面操作)
+rm -rf 原有的model.plan文件
+mv  ***.engine model.plan  (重命名)
+
+
+
+。解压命令
+tar -xvf filename.tar
+tar -zxvf filename.tar.gz
+tar -zxvf filename.tgz
+tar -jxvf filename.tar.bz2
+tar -xZvf filename.tar.Z
+unrar e filename.rar # 解压到当前目录
+unrar x filename.rar /path/to/extract 
+unzip filename.zip -d filepath
+tar.xz文件解压：先xz -d xxx.tar.xz到tar，然后tar xvf xxx.tar
+。压缩命令
+tar -zcvf filename.tar.gz filename
+tar -zcvf filename.tgz filename
+tar -jcvf filename.tar.bz2 filename
+zip filename.zip filename
+zip -r location.zip location
+gzip -d filename.gz filename
+rar -a filename.rar filename
+
+
+上传算法：
+1将生成的yolov5s-***传输到新服务器上，替换原来的文件，重启trition
+docker ps -a
+ctrl+s终止进程  
+
+
